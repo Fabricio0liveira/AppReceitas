@@ -6,9 +6,13 @@ import { Logo } from '../../components/logo';
 import api from '../../services/api';
 import  { FoodList } from '../../components/foodList';
 
+import { useNavigation } from '@react-navigation/native';
+
 export function Home() {
     const [inputValue, setInputValue] = useState('');
     const [foods, setFoods] = useState([]);
+
+    const navigation = useNavigation();
 
     useEffect(() => {
         async function fetchApi() {
@@ -21,9 +25,14 @@ export function Home() {
     }, []);
 
     function handleSearch() {
-        console.log(inputValue);
+        // Se não tiver nenhum valor dentro do campo, somente da um return
+        if(!inputValue) {
+            return;
+        }
+
+        let input = inputValue;
+        navigation.navigate('Search', {name: input});
         setInputValue('');
-        Keyboard.dismiss();
     }
 
     return (

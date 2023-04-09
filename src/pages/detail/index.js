@@ -1,6 +1,6 @@
 // import React from 'react';
-import { useLayoutEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
+import { useLayoutEffect, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image, Modal, Share } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 
 import { Entypo, AntDesign, Feather } from '@expo/vector-icons'
@@ -8,22 +8,65 @@ import { Entypo, AntDesign, Feather } from '@expo/vector-icons'
 import { Ingredients } from '../../components/ingredients';
 import { Instructions } from '../../components/intructions';
 
+import { VideoView } from '../../components/video';
+
+import { isFavorite, saveFavorite, removeFavorite } from '../../utils/storage';
+
 export function Detail() {
     const route = useRoute();
     const navigation = useNavigation();
 
+    const [showVideo, setShowVideo] = useState(false);
+    const [favorite, setFavorite] = useState(false);
+
     // Só renderiza na tela após tudo ser executado e montado
     useLayoutEffect(() => {
+        async function getStatusFavorite() {
+            const recipeFavorite = await isFavorite(route.params?.data);
+            setFavorite(recipeFavorite);
+        }
+
+        getStatusFavorite();
+
         navigation.setOptions({
             title: route.params?.data ? route.params?.data.name : 'Detalhes da receita',
             headerRight: () => (
-                <Pressable onPress={() => console.log('Testando!')}>
-                <Entypo name='heart' size={28} color='#ff4141' />
+                <Pressable onPress={ () => handleFavoriteRecipe(route.params?.data) }>
+                    {favorite ? (
+                        <Entypo name='heart' size={28} color='#ff4141' />
+                    ) : (
+                        <Entypo name='heart-outlined' size={28} color='#ff4141' />  
+                    )}    
                 </Pressable>
             )   
         })
         
-    }, [navigation, route.params?.data]);
+    }, [navigation, route.params?.data, favorite]);
+
+    async function handleFavoriteRecipe(recipe) {
+        if(favorite) {
+            await removeFavorite(recipe.id);
+            setFavorite(false);
+        }else {
+            await saveFavorite('@appReceitas', recipe);
+            setFavorite(true);
+        }
+    }
+
+    function handleOpenVideo() {
+        setShowVideo(true);
+    }
+
+    async function shareRecipe() {
+        try {
+            await Share.share({
+                url: 'https://sujeitoprogramador.com',
+                message: `Receita: ${route.params?.data.name}\nVi lá no app Receita Fácil` 
+            })
+        }catch(error) {
+            console.log(error);
+        }
+    }
 
     return (
         <ScrollView 
@@ -31,7 +74,7 @@ export function Detail() {
             contentContainerStyle={{ paddingBottom: 20 }} //Ao final do ScrollView, um pequeno espaçamento interno
             showsVerticalScrollIndicator={false}
         >
-            <Pressable>
+            <Pressable onPress={handleOpenVideo}>
                 <View style={styles.playIcon}>
                     <AntDesign name='playcircleo' size={48} color='#fafafa'/>
                 </View>
@@ -49,7 +92,7 @@ export function Detail() {
                     </Text>
                 </View>
 
-                <Pressable>
+                <Pressable onPress={shareRecipe}>
                     <Feather name='share-2' size={24} color='#121212'/>
                 </Pressable>
             </View>
@@ -67,6 +110,13 @@ export function Detail() {
             {route.params?.data.instructions.map((item, index) => (
                 <Instructions key={item.id} data={item} index={index} />
             ))}
+
+            <Modal visible={showVideo} animationType='slide'>
+                <VideoView 
+                    handleClose={ () => setShowVideo(false) } 
+                    videoUrl={route.params?.data.video}
+                />
+            </Modal>
 
         </ScrollView>
     );
